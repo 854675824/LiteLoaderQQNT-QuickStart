@@ -49,7 +49,7 @@ require(String.raw`C:\Users\Cheese\Documents\LiteLoaderQQNT`)
 在项目文件夹中创建一个名为 **`manifest.json`** 的文件，并写入以下代码：
 ![alt text](./images/image-4.png)  
 ![alt text](./images/image-5.png)
-```json
+```json5
 {
     // 必选，当前版本为 4
     "manifest_version": 4,
@@ -134,7 +134,7 @@ require(String.raw`C:\Users\Cheese\Documents\LiteLoaderQQNT`)
 | repository.release.file | release 内的文件名，不填会直接下载 tag 的源码 |
 
 ### 删除 JSON 中的所有注释（补充）
-
+在 VS Code 中按下 *Ctrl+H*，在 **查找** 输入框中输入 `.*\/\/.+\n? ` 并勾选 **正则表达式**，**替换** 输入框为空。
 
 ## LiteLoaderQQNT 加载流程
 加载流程如下:
