@@ -136,22 +136,142 @@ require(String.raw`C:\Users\Cheese\Documents\LiteLoaderQQNT`)
 ### 删除 JSON 中的所有注释（补充）
 在 VS Code 中按下 *Ctrl+H*，在 **查找** 输入框中输入 `.*\/\/.+\n? ` 并勾选 **正则表达式**，**替换** 输入框为空。
 
+## LiteLoaderQQNT 插件接口
+**LiteLoader** 插件加载顺序如下:
+1. **`main.js`** 主进程
+2. **`preload.js`** 预加载脚本
+3. **`renderer.js`** 渲染进程
+
+### 主进程接口 main.js
+| 接口名称 | 接口参数 | 接口说明 |
+| --- | --- | --- |
+| `onBrowserWindowCreated` | `(window)` | 浏览器窗口创建后执行 |
+| `onLogin` | `(uid)` | 登录后执行 |
+
+### 预加载脚本接口 preload.js
+无
+
+### 渲染进程接口 renderer.js
+| 接口名称 | 接口参数 | 接口说明 |
+| --- | --- | --- |
+| `onSettingWindowCreated` | `settingInterface` | 监听插件设置窗口创建事件，调用插件的 `onSettingWindowCreated` 方法。 |
+| `onVueComponentMount` | `component` | 监听 Vue 组件挂载事件，调用插件的 `onVueComponentMount` 方法。 |
+| `onVueComponentUnmount` | `component` | 监听 Vue 组件卸载事件，调用插件的 `onVueComponentUnmount` 方法。 |
+
+### 插件代码例子
+#### 在用户打开 QQ 窗口创建后触发对话框
+main.js
+```js
+// 监听窗口创建事件
+function onBrowserWindowCreated(){
+    alert("欢迎使用 Example 插件!");
+}
+```
+#### 在用户登陆 QQ 后触发对话框
+main.js
+```js
+// 监听登录事件
+function onLogin(uid){
+    alert("用户: "+ uid + "\n欢迎使用 Example 插件!");
+}
+```
+#### 判断是否为聊天界面
+main.js
+```js
+module.exports.onBrowserWindowCreated = window => {
+    window.webContents.on("did-stop-loading", async () => {
+        const id = window.id;
+        const url = window.webContents.getURL();
+        if (window.webContents.getURL().includes("#/main/message") || window.webContents.getURL().includes("#/chat")){
+            // 当前是聊天窗口
+            alert("当前窗口 ID 为 " + id + "\n当前窗口 URL 为 " + url + "\n当前窗口标题为 " + window.getTitle() + "\n当前窗口为聊天界面" + "\n当前窗口大小为 " + window.getSize() + "\n当前窗口位置为 " + window.getPosition())
+        }else{
+            // 当前不是聊天窗口
+            alert("当前窗口 ID 为 " + id + "\n当前窗口 URL 为 " + url + "\n当前窗口标题为 " + window.getTitle() + "\n当前窗口不为聊天界面" + "\n当前窗口大小为 " + window.getSize() + "\n当前窗口位置为 " + window.getPosition())
+        }
+    })
+}
+
+```
+#### 设置面板示例
+content.html
+```html
+<meta charset="UTF-8">
+<!-- 最外层的内容控件 -->
+<!-- 推荐使用 LiteLoader 官方的 Web Components 组件 -->
+<!-- https://liteloaderqqnt.github.io/docs/web-components.html -->
+<div class="content-view content_view">
+    <p>Hello, World!</p>
+</div>
+```
+main.js
+```js
+// 导入 Electron 模块
+const {ipcMain} = require("electron");
+// 导入文件模块
+const fs = require("fs");
+// 读取设置界面内容
+ipcMain.handle("LiteLoader.example11.getSettingContent", () => fs.readFileSync(path.join(
+    LiteLoader.plugins.example11.path.plugin, 'content.html'), 'utf-8'))
+
+```
+preload.js
+```js
+// Electron 主进程与渲染进程 交互的桥梁
+const { contextBridge, ipcRenderer } = require("electron");
+contextBridge.exposeInMainWorld("example11", {
+    // 定义获取设置内容的方法
+    getSettingContent: () => ipcRenderer.invoke("LiteLoader.example11.getSettingContent"),
+});
+```
+renderer.js
+```js
+// 监听设置窗口创建事件
+export const onSettingWindowCreated = async view => {
+    try {
+        // 创建 DOM 解析器
+        const parser = new DOMParser()
+        // 解析 HTML 界面
+        const content = parser.parseFromString(await window.example11.getSettingContent(), "text/html").querySelector(".content-view")
+        // 添加到设置界面
+        view.appendChild(content);
+    } catch (e) {
+        // 弹出错误信息
+        alert(e)
+    }
+}
+```
+
+
+
 ## LiteLoaderQQNT 加载流程
-加载流程如下:
+**LiteLoader** 的加载流程如下:
 1. QQ NT 启动
-2. 加载 LiteLoaderNT 的 init.js
-3. 加载 LiteLoaderAPI 接口 (定义 LiteLoader 接口)
-4. 加载 Loader Core 的插件加载器 (载入所有插件)
-5. 加载 LiteLoaderNT 的 main.js
-6. 在 MainLoader 加载时，加载所有插件的 main.js 文件
-6. 加载 QQ NT 主界面
+2. 加载 **LiteLoader** 的 **`init.js`**
+3. 加载 **LiteLoaderAPI** 接口 (定义 LiteLoader 接口)
+4. 加载 **Loader Core** 的插件加载器 (载入所有插件)
+5. 加载 **LiteLoader** 的 **`main.js`**
+6. 加载 **MainLoader**，加载所有插件的 **`main.js`** 文件  
+   **`main.js`** 有 **onBrowserWindowCreated** 和 **onLogin** 两个函数，  
+   分别在浏览器窗口创建后和登录后执行。
+7. 加载 **Protocol Scheme** 注册 **local://** 自定义协议
+8. 加载 **Preload** 用于注入页面的预加载脚本
+9. 加载 **Preload LiteLoader API** 向页面注入 LiteLoader 的 API
+10. 加载 **Preload Loader Core** 用于加载所有插件的 **`preload.js`** 文件
+11. 加载 **Renderer** 注入页面渲染
+12. 加载 **SettingInterface** 提供关于设置界面接口
+13. 加载 **Web Component** 为开发者提供组件接口
+14. 加载 **Loader Core RendererLoader** 用于加载所有插件的 **`renderer.js`** 文件
+15. 加载 QQ NT 主界面
+
+
 
 安装 **LiteLoaderQQNT** 时修改了 **QQ** 的配置文件 **`package.json`** 的 **main** 字段，当 **QQ** 被加载的时候，实际上加载的是当前目录 **app_launcher** 中的 **`liteloader.js`** 文件，而 **`liteloader.js`** 的内容是 ``require(String raw `C:\Users\Cheese\Documents\LiteLoaderQQNT\`)``，这里需要了解 **require** 函数和 **String.raw** 函数。
 
 ### require 函数
 require 函数用于加载模块，其参数为模块的绝对路径，这个路径可以为文件或者是文件夹。当加载文件夹时，require 就会读取文件夹下的 **`package.json`** 中的 **main** 字段，然后加载 **main** 字段指向的 JS 文件；若不存在 **main** 字段，或者是根本不存在 **`package.json`** 文件，则默认查找该文件夹下的 **`index.js`** 文件作为模块来载入。）
 ### String.raw 函数
-String.raw 函数用于返回一个字符串，该字符串使用原始的字符串字面量，即不会解析转义字符。
+**String.raw** 函数用于返回一个字符串，该字符串使用原始的字符串字面量，即不会解析转义字符。
 ```js
 // 创建名为 str 的变量，他的值为 String.raw`\n`，其中 `` 为 模板字符串，\n 为转义字符
 let str = String.raw`\n`;
@@ -163,7 +283,7 @@ console.log(str === '\\n'); // true
 console.log(str === '\n'); // false
 ```
 ---
-了解了 require 函数和 String.raw 函数，那么 **`liteloader.js`** 的作用就是加载 **`LiteLoaderQQNT`** 文件夹，而 **`LiteLoaderQQNT`** 文件夹下的 **`package.json`** 内容如下：
+了解了 **require** 函数和 **String.raw** 函数，那么 **`liteloader.js`** 的作用就是加载 **`LiteLoaderQQNT`** 文件夹，而 **`LiteLoaderQQNT`** 文件夹下的 **`package.json`** 内容如下：
 ```json
 {
     "name": "liteloader-qqnt",
@@ -208,7 +328,7 @@ setTimeout(() => {
 }, 0);
 ```
 ### LiteLoaderQQNT API
-LiteLoaderQQNT 的 API 模块位于 **`./liteloader_api`** 文件夹，该文件夹下有 **`main.js`** 和 **`index.js`** 两个文件， **`main.js`** 文件是 LiteLoaderQQNT 的核心模块， **`index.js`** 文件是 LiteLoaderQQNT 的入口文件， **`main.js`** 文件的内容如下：
+**LiteLoaderQQNT** 的 **API** 模块位于 **`./liteloader_api`** 文件夹，该文件夹下有 **`main.js`** 和 **`index.js`** 两个文件， **`main.js`** 文件是 LiteLoaderQQNT 的核心模块， **`index.js`** 文件是 **LiteLoaderQQNT** 的入口文件， **`main.js`** 文件的内容如下：
 ```js
 // 获取默认的配置文件
 // config.json 文件如下
@@ -533,7 +653,7 @@ ipcMain.handle("LiteLoader.LiteLoader.api", (event, name, method, args) => {
 
 ### Loader Core
 **`Loader Core`** 是一个核心模块，负责加载插件、启用插件、禁用插件等核心功能。
-位于 **`./loader_core/`** 文件夹中，在 LiteLoader 的加载流程中，他是在 LiteLoader API 之后被加载的，加载的文件为 **`loader_core.js`**。
+位于 **`./loader_core/`** 文件夹中，在 LiteLoader 的加载流程中，他是在 **LiteLoader API** 之后被加载的，加载的文件为 **`loader_core.js`**。
 ```js
 // 引入 Electron 的 app 和 dialog 模块
 // app 模块用于获取 Electron 的基本信息
@@ -797,8 +917,8 @@ if (config.enable_plugins) {
 }
 ```
 
-### LiteLoader 主要文件 main.js
-继 LiteLoaderAPI 接口，LoaderCore 载入所有插件之后，LiteLoader 的主要文件 main.js 开始被加载：
+### LiteLoader 入口文件
+继 **LiteLoaderAPI** 接口，**LoaderCore** 载入所有插件之后，**LiteLoader** 的主要文件 **`main.js`** 开始被加载：
 ```js
 // 获取 LoaderCore 的 MainLoader 类
 const { MainLoader } = require("./loader_core/main.js");
@@ -869,8 +989,8 @@ require.cache["electron"] = new Proxy(require.cache["electron"], {
 });
 ```
 
-### Loader Core MainLoader
-LoaderCore 的 MainLoader 类用于初始化和管理插件：
+### Loader Core MainLoader  main.js
+**LoaderCore** 的 **MainLoader** 类位于 **`loader_core/main.js`** 中，用于初始化和管理插件：
 ```js
 // 拓扑排序函数
 // 第一个参数为依赖项列表
@@ -950,7 +1070,7 @@ exports.MainLoader = class {
 }
 ```
 ### LiteLoaderNTQQ Protocol Scheme 自定义协议
-LiteLoaderNTQQ 自定义了一种 local:// 协议，以下是协议的例子  
+**LiteLoaderNTQQ** 自定义了一种 **`local://`** 协议，协议的实现在 **`protocol_scheme/main.js`**，以下是使用自定义协议的例子:
 ```js
 // 访问本地的文件
 // 等效于 C:/test.txt
@@ -963,7 +1083,7 @@ const url2 = new URL("local:///root/package.json");
 // 或者等效于其他的配置文件目录
 const url3 = new URL("local:///profile/package.json");
 ```
-
+自定义协议的实现 **`protocol_scheme/main.js`**：
 ```js
 // 加载 Electron 里的 app、protocol 和 net 模块
 const { app, protocol, net } = require("electron");
@@ -1030,7 +1150,7 @@ exports.protocolRegister = (protocol) => {
 }
 ```
 ### Preload JavaScript 预加载脚本
-LiteLoaderQQNT 通过给 **`window.webContents._getPreloadPaths`** 添加代理的方法注入 **`./preload.js`** 脚本：
+**LiteLoaderQQNT** 通过给 **`window.webContents._getPreloadPaths`** 添加代理的方法注入 **`./preload.js`** 脚本：
 ```js
 // 监听 HTML 文档加载完成事件
 document.addEventListener("DOMContentLoaded", () => {
@@ -1040,22 +1160,45 @@ document.addEventListener("DOMContentLoaded", () => {
     script.type = "module";
     // 加载 renderer.js
     script.src = `local://root/src/renderer.js`;
+    // 插入 script 标签到页面的头部后面
     document.head.prepend(script);
 });
 
 
 // 运行外部脚本
+// 定义全局 runPreloadScript 函数
+// 
 Object.defineProperty(globalThis, "runPreloadScript", {
+    // 不可删除或重新配置其特性
     configurable: false,
+    // 限制函数只能访问以下属性：
+    // require、process、Buffer、global、
+    // setImmediate、clearImmediate、exports、module
     value: content => new Function(
+        // require 函数
+        // 用于加载 Node.js 模块
         "require",
+        // process 类 例如: 
+        // process.platform() 获取系统平台名称
+        // process.version() 获取 Node.js 版本号
         "process",
+        // Buffer 类 用于处理二进制数据 例如:
+        // Buffer.from("Hello, World!") 从字符串创建 Buffer 对象
+        // Buffer.alloc(10) 创建一个长度为 10 的 Buffer 对象
         "Buffer",
+        // global 全局对象 例如:
+        // global.process 获取全局环境的 process 变量
         "global",
+        // setImmediate 通常用于将代码推迟到当前操作完成后执行
+        // 相比于 setTimeout(fn, 0), setImmediate 通常具有更好的性能
         "setImmediate",
+        // 取消设置的 setImmediate 回调
         "clearImmediate",
+        // exports 导出对象
         "exports",
+        // module 模块对象 例如: module.exports = {}
         "module",
+        // 插件的内容
         content
     )(...arguments)
 });
@@ -1070,14 +1213,1049 @@ Object.defineProperty(globalThis, "runPreloadScript", {
 })();
 ```
 
-### 渲染进程脚本 renderer.js
-Tips: 关于渲染解析就写到这里
+### Preload LiteLoader API 
+在上文中提到 `./preload.js` 脚本，它通过 `window.webContents._getPreloadPaths` 添加代理的方式注入了 `./liteloader_api/preload.js` 脚本，该脚本为 LiteLoader 的 API 模块，提供了一些 API 供插件使用。
+```js
+// 引入 Electron 的模块
+// ipcRenderer   用于在渲染进程中与主进程通信。
+// contextBridge 用于安全地将对象暴露给渲染进程的全局对象。
+const { ipcRenderer, contextBridge } = require("electron");
+
+// 定义 invokeAPI 函数
+// 通过 ipcRenderer 实现，用于调用主进程的 API。
+function invokeAPI(name, method, args) {
+    return ipcRenderer.invoke("LiteLoader.LiteLoader.api", name, method, args);
+}
+
+
+// 定义 LiteLoader 接口
+Object.defineProperty(globalThis, "LiteLoader", {
+    value: {
+        ...ipcRenderer.sendSync("LiteLoader.LiteLoader.LiteLoader"),
+        api: {
+            config: {
+                // 获取配置项
+                get: (...args) => invokeAPI("config", "get", args),
+                // 设置配置项
+                set: (...args) => invokeAPI("config", "set", args)
+            },
+            plugin: {
+                // 安装插件
+                install: (...args) => invokeAPI("plugin", "install", args),
+                // 删除插件
+                delete: (...args) => invokeAPI("plugin", "delete", args),
+                // 禁用插件
+                disable: (...args) => invokeAPI("plugin", "disable", args)
+            },
+            // 打开外部链接
+            openExternal: (...args) => invokeAPI("openExternal", "openExternal", args),
+            // 打开文件路径
+            openPath: (...args) => invokeAPI("openPath", "openPath", args)
+        }
+    }
+});
+
+// 暴露 LiteLoader 对象到渲染进程的全局对象
+contextBridge.exposeInMainWorld("LiteLoader", LiteLoader);
+```
+
+### Preload Loader Core  preload.js
+Preload Loader Core 用于调用插件的 **`preload.js`** 脚本。
+```js
+// 引入 Electron 的模块
+const { contextBridge } = require("electron");
+// 拓扑排序函数
+// 第一个参数为依赖项列表
+// 会按照依赖关系进行排序
+function topologicalSort(dependencies) {
+    // 创建排序后的插件列表
+    const sorted = [];
+    // 创建已访问的插件列表
+    const visited = new Set();
+    const visit = (slug) => {
+        // 如果插件已经访问过，则跳过
+        if (visited.has(slug)) return;
+        // 将插件添加到已访问的插件列表
+        visited.add(slug);
+        // 获取插件信息
+        const plugin = LiteLoader.plugins[slug];
+        // 遍历插件的依赖项添加到已访问的插件列表
+        plugin.manifest.dependencies?.forEach(depSlug => visit(depSlug));
+        // 将插件添加到排序后的插件列表
+        sorted.push(slug);
+    }
+    dependencies.forEach(slug => visit(slug));
+    return sorted;
+}
+
+// 创建类并初始化
+(new class {
+
+    async init() {
+        // 插件错误列表
+        const preloadErrors = {}
+        // 遍历所有插件
+        for (const slug of topologicalSort(Object.keys(LiteLoader.plugins))) {
+            // 获取插件信息
+            const plugin = LiteLoader.plugins[slug];
+            // 跳过已禁用、不兼容、或存在错误的插件
+            if (plugin.disabled || plugin.incompatible || plugin.error) {
+                continue;
+            }
+            // 判断插件是否有预加载脚本
+            if (plugin.path.injects.preload) {
+                try {
+                    // 运行插件的 preload 脚本
+                    runPreloadScript(await (await fetch(`local:///${plugin.path.injects.preload}`)).text());
+                }
+                catch (e) {
+                    // 记录插件的错误信息
+                    preloadErrors[slug] = { message: `[Preload] ${e.message}`, stack: e.stack };
+                }
+            }
+        }
+        // 暴露插件错误列表到渲染进程的全局对象
+        contextBridge.exposeInMainWorld("LiteLoaderPreloadErrors", preloadErrors);
+        return this;
+    }
+
+}).init();
+```
+
+### 渲染进程脚本 renderer
 ```js
 // 加载 LiteLoaderQQNT 的组件
 import "./components/renderer.js";
 // 加载 LiteLoaderQQNT 的彩蛋
 import "./easter_eggs/renderer.js";
-...
+// 加载 Settings 模块的设置界面接口
+import { SettingInterface } from "./settings/renderer.js";
+// 加载 Loader Core 的 RendererLoader 渲染加载器
+import { RendererLoader } from "./loader_core/renderer.js";
+
+// 初始化渲染加载器
+const loader = await new RendererLoader().init();
+
+
+// 寻找指定元素
+function findElement(selector, callback) {
+    // 创建观察者
+    const observer = (_, observer) => {
+        // 查找元素
+        const element = document.querySelector(selector);
+        // 判断 element 是否不为 null 空值
+        if (element) {
+            callback(element);
+            // 断开观察者模式
+            observer?.disconnect?.();
+            // 返回 true 给 observer
+            return true;
+        }
+        // 返回 false 给 observer
+        return false;
+    }
+    // 判断元素是否找到
+    if (!observer()) {
+        // 监听页面变化直到页面有这个元素
+        new MutationObserver(observer).observe(document, {
+            subtree: true,
+            attributes: false,
+            childList: true
+        });
+    }
+}
+
+
+// 监听页面变化
+function watchURLHash(callback) {
+    // 判断当前 URL 的哈希值是否不包含 #/blank
+    if (!location.hash.includes("#/blank")) {
+        // 调用 callback 回调，参数为 URL 的哈希值
+        callback(location.hash);
+    }
+    // 若当前 URL 的哈希值包含 #/blank
+    else {
+        // 添加导航成功事件监听器
+        navigation.addEventListener("navigatesuccess", () => {
+            // 调用 callback 回调，参数为 URL 的哈希值
+            callback(location.hash)
+        }, { once: true });
+    }
+}
+
+
+// 指定页面触发
+watchURLHash((currentHash) => {
+    // 判断当前 URL 的哈希值是否包含 #/setting
+    if (currentHash.includes("#/setting")) {
+        // 创建设置界面接口
+        const settingInterface = new SettingInterface();
+        // 查找 .setting-tab .nav-bar
+        findElement(".setting-tab .nav-bar", () => {
+            // 调用设置接口的初始化函数
+            settingInterface.SettingInit();
+            // 调用 loader_core 的 loader 加载器的 onSettingWindowCreated 函数
+            loader.onSettingWindowCreated(settingInterface);
+        });
+    }
+});
+
+
+// 创建代理对象
+Proxy = new Proxy(Proxy, {
+    // 拦截 new 操作符
+    construct(target, argArray, newTarget) {
+        // 获取组件实例
+        const component = argArray[0]?._;
+        // 获取组件元素
+        const element = component?.vnode?.el;
+        // 判断组件的 uid 是否大于等于 0
+        if (component?.uid >= 0) {
+            // 判断组件元素是否不为 null 空值
+            if (element) {
+                // 监听组件卸载
+                watchComponentUnmount(component);
+                // 记录组件实例
+                recordComponent(component);
+                // 调用 loader_core 的 loader 加载器的 onVueComponentMount 函数
+                loader.onVueComponentMount(component);
+            // 监听组件挂载事件
+            } else watchComponentMount(component);
+        }
+        // 通过反射返回新的实例
+        return Reflect.construct(target, argArray, newTarget);
+    }
+});
+
+
+// 记录组件实例
+function recordComponent(component) {
+    // 获取组件的虚拟节点对应的 DOM 元素
+    let element = component.vnode.el;
+    // 循环向上寻找 HTMLElement
+    while (!(element instanceof HTMLElement)) {
+        element = element.parentElement;
+    }
+
+    // 判断元素是否已经记录过组件实例
+    // 插入组件到 元素.__VUE__ 数组中
+    if (element.__VUE__) element.__VUE__.push(component);
+    // 否则创建元素.__VUE__ 数组
+    else element.__VUE__ = [component];
+
+    // 为元素添加 vue-component 类
+    element.classList.add("vue-component");
+}
+
+// 监听组件挂载
+function watchComponentMount(component) {
+    // 存储组件的 DOM 元素
+    let value = null;
+    // 存储是否已经挂载的标志
+    let hooked = false;
+    // 重写组件的 vnode.el 属性
+    Object.defineProperty(component.vnode, "el", {
+        // 返回 DOM 元素
+        get() { return value },
+        // 设置 DOM 元素
+        set(newValue) {
+            // 设置 DOM 元素
+            value = newValue;
+            // 判断是否已挂载
+            if (!hooked && this.el) {
+                hooked = true;
+                // 监听组件卸载
+                watchComponentUnmount(component);
+                // 调用 loader_core 的 loader 加载器的 onVueComponentMount 函数
+                loader.onVueComponentMount(component);
+            }
+            if (value) {
+                // 记录组件实例
+                recordComponent(component);
+            }
+        }
+    });
+}
+
+
+// 监听组件卸载
+function watchComponentUnmount(component) {
+    // 存储卸载标志
+    let value = null;
+    // 存储是否 hook 的标志
+    let unhooked = false;
+    // 重写组件的 isUnmounted 属性
+    Object.defineProperty(component, "isUnmounted", {
+        get() { return value },
+        set(newValue) {
+            value = newValue;
+            if (!unhooked && this.isUnmounted) {
+                // 存储是否 hook 的标志
+                unhooked = true;
+                // 调用 loader_core 的 loader 加载器的 onVueComponentUnmount 函数
+                loader.onVueComponentUnmount(component);
+            }
+        }
+    });
+}
+```
+
+### 设置渲染器 SettingInterface 接口
+**SettingInterface** 为 **LiteLoader** 插件提供了设置界面接口，可用于创建插件设置界面。
+```js
+// 获取默认配置
+import default_config from "./static/config.json" with {type: "json"};
+
+// 创建全局 SettingInterface 类
+export class SettingInterface {
+    // 获取 LiteLoader 导航栏
+    #liteloader_nav_bar = document.createElement("div");
+    // 获取 LiteLoader 设置界面
+    #liteloader_setting_view = document.createElement("div");
+    // 获取设置面板元素
+    #setting_view = document.querySelector(".setting-main .q-scroll-view");
+    // 获取设置界面标题
+    #setting_title = document.querySelector(".setting-main .setting-title");
+
+    constructor() {
+        // 初始化导航栏样式
+        this.#liteloader_nav_bar.classList.add("nav-bar", "liteloader");
+        // 初始化设置面板的样式
+        this.#liteloader_setting_view.classList.add("q-scroll-view", "scroll-view--show-scrollbar", "liteloader");
+        // 初始化显示状态
+        this.#liteloader_setting_view.style.display = "none";
+        // 添加导航栏到页面中
+        document.querySelector(".setting-tab").append(this.#liteloader_nav_bar);
+        // 添加设置面板到页面中
+        document.querySelector(".setting-main .setting-main__content").append(this.#liteloader_setting_view);
+        // 监听导航栏点击事件
+        document.querySelector(".setting-tab").addEventListener("click", event => {
+            // 克隆导航栏元素
+            const nav_item = event.target.closest(".nav-item");
+            // 判断对象是否不为 null
+            if (nav_item) {
+                // 判断是否为 LiteLoader 插件
+                if (nav_item.parentElement.classList.contains("liteloader")) {
+                    // 隐藏设置面板
+                    this.#setting_view.style.display = "none";
+                    // 显示 LiteLoader 的设置面板
+                    this.#liteloader_setting_view.style.display = "block";
+                }
+                // 否则显示默认设置面板
+                else {
+                    // 显示默认设置面板
+                    this.#setting_view.style.display = "block";
+                    // 隐藏 LiteLoader 的设置面板
+                    this.#liteloader_setting_view.style.display = "none";
+                }
+                // 重新设定激活状态
+                this.#setting_title.childNodes[1].textContent = nav_item.querySelector(".name").textContent;
+                // 移除所有激活状态
+                document.querySelectorAll(".setting-tab .nav-item").forEach(element => {
+                    element.classList.remove("nav-item-active");
+                });
+                // 添加激活状态
+                nav_item.classList.add("nav-item-active");
+            }
+        });
+    }
+
+    // 添加插件设置面板
+    add(plugin) {
+        // 指定默认缩略图路径
+        const default_thumb = `local://root/src/settings/static/default.svg`;
+        // 指定插件缩略图路径
+        const plugin_thumb = `local:///${plugin.path.plugin}/${plugin.manifest?.thumb}`;
+        // 获取实际有效缩略图
+        const thumb = plugin.manifest.thumb ? plugin_thumb : default_thumb;
+        // 克隆导航栏元素
+        const nav_item = document.querySelector(".setting-tab .nav-item").cloneNode(true);
+        // 创建设置面板元素
+        const view = document.createElement("div");
+        // 移除导航栏激活状态
+        nav_item.classList.remove("nav-item-active");
+        // 设置导航栏的 data-slug 属性
+        nav_item.setAttribute("data-slug", plugin.manifest.slug);
+        // 设置导航栏的图标
+        appropriateIcon(thumb).then(async text => nav_item.querySelector(".q-icon").innerHTML = text);
+        // 设置导航栏的名称
+        nav_item.querySelector(".name").textContent = plugin.manifest.name;
+        // 监听导航栏点击事件
+        nav_item.addEventListener("click", event => {
+            if (!event.currentTarget.classList.contains("nav-item-active")) {
+                this.#liteloader_setting_view.textContent = null;
+                this.#liteloader_setting_view.append(view);
+            }
+        });
+        // 添加导航栏
+        this.#liteloader_nav_bar.append(nav_item);
+        // 创建设置面板
+        view.classList.add("tab-view", plugin.manifest.slug);
+        return view;
+    }
+
+    // 初始化设置面板
+    SettingInit() {
+        // 添加样式
+        const style = document.createElement("link");
+        style.rel = "stylesheet";
+        style.type = "text/css";
+        style.href = "local://root/src/settings/static/style.css";
+        document.head.append(style);
+        const view = this.add({
+            manifest: {
+                slug: "config_view",
+                name: "LiteLoaderQQNT",
+                thumb: "./src/settings/static/default.svg"
+            },
+            path: {
+                plugin: LiteLoader.path.root
+            }
+        });
+        fetch("local://root/src/settings/static/view.html").then(async res => {
+            view.innerHTML = await res.text();
+            initVersions(view);
+            initPluginList(view);
+            initPath(view);
+            initAbout(view);
+        });
+    }
+
+    createErrorView(error, slug, view) {
+        const navItem = document.querySelector(`.nav-item[data-slug="${slug}"]`);
+        navItem.classList.add("error");
+        navItem.title = "插件加载出错";
+
+        view.classList.add("error");
+        view.innerHTML =
+            `<h2>🙀 插件加载出错！</h2>
+            <p>可能是版本不兼容、Bug、冲突或文件损坏等导致的</p>
+            🐞 错误信息
+            <textarea readonly rows="8">${error.message}\n${error.stack}</textarea>
+            🧩 插件信息
+            <textarea readonly rows="12">${JSON.stringify(LiteLoader.plugins[slug])}</textarea>
+            <textarea readonly rows="3">${JSON.stringify(Object.keys(LiteLoader.plugins))}</textarea>
+            🖥️ 环境信息
+            <textarea readonly rows="3">${JSON.stringify({ ...LiteLoader.versions, ...LiteLoader.os })}</textarea>
+            <small>* 此页面仅在插件加载出现问题出现，不代表插件本身有设置页</small>`; // 没必要格式化json，方便截图
+    }
+}
+
+
+async function appropriateIcon(pluginIconUrlUsingLocalPotocol) {
+    if (pluginIconUrlUsingLocalPotocol.endsWith('.svg')) {
+        return await (await fetch(pluginIconUrlUsingLocalPotocol)).text();
+    } else {
+        return `<img src="${pluginIconUrlUsingLocalPotocol}"/>`;
+    }
+}
+
+
+async function initVersions(view) {
+    const liteloader = view.querySelectorAll(".versions .current .liteloader setting-text");
+    const qqnt = view.querySelectorAll(".versions .current .qqnt setting-text");
+    const electron = view.querySelectorAll(".versions .current .electron setting-text");
+    const chromium = view.querySelectorAll(".versions .current .chromium setting-text");
+    const nodejs = view.querySelectorAll(".versions .current .nodejs setting-text");
+
+    liteloader[1].textContent = LiteLoader.versions.liteloader;
+    qqnt[1].textContent = LiteLoader.versions.qqnt;
+    electron[1].textContent = LiteLoader.versions.electron;
+    chromium[1].textContent = LiteLoader.versions.chrome;
+    nodejs[1].textContent = LiteLoader.versions.node;
+
+    const title = view.querySelector(".versions .new setting-text");
+    const update_btn = view.querySelector(".versions .new setting-button");
+
+    const jump_link = () => LiteLoader.api.openExternal(update_btn.value);
+    const try_again = () => {
+        // 初始化 显示
+        title.textContent = "正在瞅一眼 LiteLoaderQQNT 是否有新版本";
+        update_btn.textContent = "你先别急";
+        update_btn.value = null;
+        update_btn.removeEventListener("click", jump_link);
+        update_btn.removeEventListener("click", try_again);
+        // 检测是否有新版
+        const repo_url = LiteLoader.package.liteloader.repository.url;
+        const release_latest_url = `${repo_url.slice(0, repo_url.lastIndexOf(".git"))}/releases/latest`;
+        fetch(release_latest_url).then((res) => {
+            const new_version = res.url.slice(res.url.lastIndexOf("/") + 1);
+            // 有新版
+            if (LiteLoader.versions.liteloader != new_version) {
+                title.textContent = `发现 LiteLoaderQQNT 新版本 ${new_version}`;
+                update_btn.textContent = "去瞅一眼";
+                update_btn.value = res.url;
+                update_btn.removeEventListener("click", try_again);
+                update_btn.addEventListener("click", jump_link);
+            }
+            // 没新版
+            else {
+                title.textContent = "暂未发现 LiteLoaderQQNT 有新版本，目前已是最新";
+                update_btn.textContent = "重新发现";
+                update_btn.value = null;
+                update_btn.removeEventListener("click", jump_link);
+                update_btn.addEventListener("click", try_again);
+            }
+        }).catch((e) => {
+            title.textContent = `检查更新时遇到错误：${e}`;
+            update_btn.textContent = "重新发现";
+            update_btn.value = null;
+            update_btn.removeEventListener("click", jump_link);
+            update_btn.addEventListener("click", try_again);
+        });
+    };
+
+    try_again();
+}
+
+
+async function initPluginList(view) {
+    const plugin_item_template = view.querySelector("#plugin-item");
+    const plugin_install_button = view.querySelector(".plugins .plugin .install setting-button");
+    const plugin_loader_switch = view.querySelector(".plugins .plugin .loader setting-switch");
+    const plugin_lists = {
+        extension: view.querySelector(".plugins .extension"),
+        theme: view.querySelector(".plugins .theme"),
+        framework: view.querySelector(".plugins .framework"),
+    };
+
+    const input_file = document.createElement("input");
+    input_file.type = "file";
+    input_file.accept = ".zip,.json";
+    input_file.addEventListener("change", async () => {
+        const filepath = input_file.files?.[0]?.path;
+        const config = await LiteLoader.api.config.get("LiteLoader", default_config);
+        const has_install = Object.values(config.installing_plugins).some(item => item.plugin_path == filepath);
+        const is_install = await LiteLoader.api.plugin.install(filepath, has_install);
+        alert(is_install ? (has_install ? "已取消安装此插件" : "将在下次启动时安装") : "无法安装无效插件");
+        input_file.value = null;
+    });
+    plugin_install_button.addEventListener("click", () => input_file.click());
+
+    const config = await LiteLoader.api.config.get("LiteLoader", default_config);
+    plugin_loader_switch.toggleAttribute("is-active", config.enable_plugins);
+    plugin_loader_switch.addEventListener("click", () => {
+        const isActive = plugin_loader_switch.hasAttribute("is-active");
+        plugin_loader_switch.toggleAttribute("is-active", !isActive);
+        config.enable_plugins = !isActive;
+        LiteLoader.api.config.set("LiteLoader", config);
+    });
+
+    const plugin_counts = {
+        extension: 0,
+        theme: 0,
+        framework: 0
+    }
+
+    for (const [slug, plugin] of Object.entries(LiteLoader.plugins)) {
+        // 跳过不兼容插件
+        if (plugin.incompatible) {
+            continue;
+        }
+
+        const default_icon = `local://root/src/settings/static/default.png`;
+        const plugin_icon = `local:///${plugin.path.plugin}/${plugin.manifest?.icon}`;
+        const icon = plugin.manifest?.icon ? plugin_icon : default_icon;
+
+        const plugin_list = plugin_lists[plugin.manifest.type] || plugin_lists.extension;
+        const plugin_item = plugin_item_template.content.cloneNode(true);
+
+        const plugin_item_icon = plugin_item.querySelector(".icon");
+        const plugin_item_name = plugin_item.querySelector(".name");
+        const plugin_item_description = plugin_item.querySelector(".description");
+        const plugin_item_version = plugin_item.querySelector(".version");
+        const plugin_item_authors = plugin_item.querySelector(".authors");
+        const plugin_item_repo = plugin_item.querySelector(".repo");
+        const plugin_item_manager = plugin_item.querySelector(".manager");
+        const plugin_item_manager_modal = plugin_item.querySelector(".manager-modal");
+        const manager_modal_enable = plugin_item_manager_modal.querySelector(".enable");
+        const manager_modal_keepdata = plugin_item_manager_modal.querySelector(".keepdata");
+        const manager_modal_uninstall = plugin_item_manager_modal.querySelector(".uninstall");
+
+        plugin_item_icon.innerHTML = await appropriateIcon(icon);
+        plugin_item_name.textContent = plugin.manifest.name;
+        plugin_item_name.title = plugin.manifest.name;
+        plugin_item_description.textContent = plugin.manifest.description;
+        plugin_item_description.title = plugin.manifest.description;
+
+        const version_link = document.createElement("setting-link");
+        version_link.textContent = plugin.manifest.version;
+        plugin_item_version.append(version_link);
+
+        plugin.manifest.authors?.forEach((author, index, array) => {
+            const author_link = document.createElement("setting-link");
+            author_link.textContent = author.name;
+            author_link.dataset["value"] = author.link;
+            plugin_item_authors.append(author_link);
+            if (index < array.length - 1) {
+                plugin_item_authors.append(" | ");
+            }
+        });
+
+        if (plugin.manifest.repository) {
+            const { repo, branch } = plugin.manifest.repository
+            const repo_link = document.createElement("setting-link");
+            repo_link.textContent = repo;
+            repo_link.dataset["value"] = `https://github.com/${repo}/tree/${branch}`;
+            plugin_item_repo.append(repo_link);
+        } else plugin_item_repo.textContent = "暂无仓库信息";
+
+        plugin_item_manager_modal.dataset["title"] = plugin.manifest.name;
+
+        plugin_item_manager.addEventListener("click", () => {
+            plugin_item_manager_modal.toggleAttribute("is-active");
+        });
+
+        manager_modal_enable.toggleAttribute("is-active", !config.disabled_plugins.includes(slug));
+        manager_modal_enable.addEventListener("click", () => {
+            const isActive = manager_modal_enable.hasAttribute("is-active");
+            manager_modal_enable.toggleAttribute("is-active", !isActive);
+            LiteLoader.api.plugin.disable(slug, !isActive);
+        });
+
+        manager_modal_keepdata.toggleAttribute("is-active", !!config.deleting_plugins?.[slug]?.data_path);
+        manager_modal_keepdata.addEventListener("click", async () => {
+            const isActive = manager_modal_keepdata.hasAttribute("is-active");
+            manager_modal_keepdata.toggleAttribute("is-active", !isActive);
+            const config = await LiteLoader.api.config.get("LiteLoader", default_config);
+            if (slug in config.deleting_plugins) LiteLoader.api.plugin.delete(slug, !isActive, false);
+        });
+
+        manager_modal_uninstall.toggleAttribute("is-active", !!config.deleting_plugins?.[slug]);
+        manager_modal_uninstall.addEventListener("click", () => {
+            const isActive = manager_modal_uninstall.hasAttribute("is-active");
+            manager_modal_uninstall.toggleAttribute("is-active", !isActive);
+            const keepdata = manager_modal_keepdata.hasAttribute("is-active");
+            LiteLoader.api.plugin.delete(slug, keepdata, isActive);
+        });
+
+        plugin_list.append(plugin_item);
+
+        plugin_counts.total++;
+        plugin_counts[plugin.manifest.type]++;
+    }
+
+    plugin_lists.extension.dataset["title"] = `扩展 （ ${plugin_counts.extension} 个插件 ）`;
+    plugin_lists.theme.dataset["title"] = `主题 （ ${plugin_counts.theme} 个插件 ）`;
+    plugin_lists.framework.dataset["title"] = `依赖 （ ${plugin_counts.framework} 个插件 ）`;
+}
+
+
+async function initPath(view) {
+    const root_path_content = view.querySelectorAll(".path .root setting-text")[2];
+    const root_path_button = view.querySelector(".path .root setting-button");
+    const profile_path_content = view.querySelectorAll(".path .profile setting-text")[2];
+    const profile_path_button = view.querySelector(".path .profile setting-button");
+
+    root_path_content.textContent = LiteLoader.path.root;
+    root_path_button.addEventListener("click", () => LiteLoader.api.openPath(LiteLoader.path.root));
+    profile_path_content.textContent = LiteLoader.path.profile;
+    profile_path_button.addEventListener("click", () => LiteLoader.api.openPath(LiteLoader.path.profile));
+}
+
+
+async function initAbout(view) {
+    const liteloaderqqnt = view.querySelector(".about .liteloaderqqnt");
+    const github = view.querySelector(".about .github");
+    const group = view.querySelector(".about .group");
+    const channel = view.querySelector(".about .channel");
+
+    liteloaderqqnt.addEventListener("click", () => LiteLoader.api.openExternal("https://liteloaderqqnt.github.io"));
+    github.addEventListener("click", () => LiteLoader.api.openExternal("https://github.com/LiteLoaderQQNT"));
+    group.addEventListener("click", () => LiteLoader.api.openExternal("https://t.me/LiteLoaderQQNT"));
+    channel.addEventListener("click", () => LiteLoader.api.openExternal("https://t.me/LiteLoaderQQNT_Channel"));
+
+    // Hitokoto - 一言
+    let visible = true;
+    const hitokoto_text = view.querySelector(".about .hitokoto_text");
+    const hitokoto_author = view.querySelector(".about .hitokoto_author");
+    const observer = new IntersectionObserver((entries) => {
+        visible = entries[0].isIntersecting;
+    });
+    observer.observe(hitokoto_text);
+    async function trueUpdate() {
+        const { hitokoto, creator } = await (await fetch("https://v1.hitokoto.cn")).json();
+        hitokoto_text.textContent = hitokoto;
+        hitokoto_author.textContent = creator;
+    }
+    async function fetchHitokoto() {
+        // 页面不可见或一言不可见时不更新
+        if (document.hidden || !visible) {
+            return;
+        }
+        await trueUpdate();
+    };
+    trueUpdate();
+    setInterval(fetchHitokoto, 1000 * 10);
+}
+
+```
+
+### 组件渲染器 Web Components
+**LiteLoader** 的 **`components/renderer.js`** 为 **LiteLoader** 插件提供了自定义组件渲染器，以方便开发者快速开发界面。LiteLoader 官方有对 **`components/renderer.js`** 的详细文档，可以参考 [LiteLoaderQQNT 官方文档](https://liteloaderqqnt.github.io/docs/web-components.html)。这里仅放代码供参考:
+```js
+import style from "./static/style.css" with { type: "css" };
+
+const html_url = "local://root/src/components/static/template.html";
+const html_file = await (await fetch(html_url)).text();
+const template = new DOMParser().parseFromString(html_file, "text/html");
+
+
+Object.defineProperty(globalThis, "SettingElementStyleSheets", {
+    value: new class {
+        #styleSheets = [];
+        #callbacks = [];
+        set styleSheets(value) {
+            this.#styleSheets = value;
+            for (const callback of this.#callbacks) {
+                callback(this.#styleSheets);
+            }
+        }
+        get styleSheets() {
+            return this.#styleSheets;
+        }
+        on(callback) {
+            this.#callbacks.push(callback);
+            callback(this.#styleSheets);
+        }
+    }
+});
+
+
+class SettingElementBase extends HTMLElement {
+    constructor(element_id) {
+        super();
+        this.attachShadow({ mode: "open" });
+        this._template = template.getElementById(element_id);
+        this._content = this._template.content.cloneNode(true);
+        this._slot = this.shadowRoot.querySelector("slot");
+        this.shadowRoot.append(this._content);
+        SettingElementStyleSheets.on((styleSheets) => {
+            this.shadowRoot.adoptedStyleSheets = styleSheets;
+        });
+    }
+    attributeChangedCallback() {
+        this.update();
+    }
+    update() {
+        return;
+    }
+}
+
+
+SettingElementStyleSheets.styleSheets = [style];
+
+
+customElements.define("setting-section", class extends SettingElementBase {
+    static observedAttributes = ["data-title"];
+    constructor() {
+        super("setting-section");
+        this._title = this.shadowRoot.querySelector("h1");
+        this.update();
+    }
+    update() {
+        this._title.textContent = this.dataset["title"];
+    }
+});
+
+
+customElements.define("setting-panel", class extends SettingElementBase {
+    constructor() {
+        super("setting-panel");
+    }
+});
+
+
+customElements.define("setting-list", class extends SettingElementBase {
+    static observedAttributes = ["data-title", "data-direction", "is-collapsible", "is-active", "is-disabled"];
+    constructor() {
+        super("setting-list");
+        this._head = this.shadowRoot.querySelector("setting-item");
+        this._title = this.shadowRoot.querySelector("h2");
+        this._slot = this.shadowRoot.querySelector("slot");
+        this._head.addEventListener("click", () => {
+            this.toggleAttribute("is-active");
+        });
+        this.update();
+        new MutationObserver((_, observer) => {
+            observer.disconnect();
+            this.update();
+            observer.observe(this, { childList: true });
+        }).observe(this, { childList: true });
+    }
+    update() {
+        this._title.textContent = this.dataset["title"];
+        const slot_children = this._slot.assignedElements();
+        this.querySelectorAll("setting-divider").forEach(node => node.remove());
+        // 折叠列表
+        if (this.hasAttribute("is-collapsible")) {
+            this._head.classList.toggle("hidden", false);
+            slot_children.forEach((node, index) => {
+                const setting_divider = document.createElement("setting-divider");
+                if (this.dataset["direction"] == "column") {
+                    setting_divider.dataset["direction"] = "row";
+                    node.dataset["direction"] = "row";
+                }
+                if (index < slot_children.length) {
+                    node.before(setting_divider);
+                }
+            });
+        }
+        // 普通列表
+        else {
+            this._head.classList.toggle("hidden", true);
+            slot_children.forEach((node, index) => {
+                const setting_divider = document.createElement("setting-divider");
+                if (this.dataset["direction"] == "column") {
+                    setting_divider.dataset["direction"] = "row";
+                    node.dataset["direction"] = "row";
+                }
+                if (this.dataset["direction"] == "row") {
+                    setting_divider.dataset["direction"] = "column";
+                    node.dataset["direction"] = "column";
+                }
+                if (index + 1 < slot_children.length) {
+                    node.after(setting_divider);
+                }
+            });
+        }
+    }
+});
+
+
+customElements.define("setting-item", class extends SettingElementBase {
+    static observedAttributes = ["data-direction"];
+    constructor() {
+        super("setting-item");
+    }
+});
+
+
+customElements.define("setting-select", class extends SettingElementBase {
+    static observedAttributes = ["is-disabled"];
+    constructor() {
+        super("setting-select");
+        this._title = this.shadowRoot.querySelector("input");
+        this._button = this.shadowRoot.querySelector(".menu-button");
+        this._context = this.shadowRoot.querySelector("ul");
+        const click = () => {
+            this._context.classList.toggle("hidden");
+            if (!this._context.classList.contains("hidden")) {
+                window.addEventListener("pointerup", pointerup);
+                this._context.style.width = getComputedStyle(this).getPropertyValue("width");
+            }
+            else {
+                window.removeEventListener("pointerup", pointerup);
+                this._context.style.width = null;
+            }
+        }
+        const pointerup = (event) => {
+            if (event.target.tagName != "SETTING-SELECT") {
+                click();
+            }
+        }
+        this._button.addEventListener("click", click);
+        this._context.addEventListener("click", (event) => {
+            if (event.target.tagName == "SETTING-OPTION" && !event.target.hasAttribute("is-selected")) {
+                for (const node of this.querySelectorAll("setting-option[is-selected]")) {
+                    node.toggleAttribute("is-selected");
+                }
+                event.target.toggleAttribute("is-selected");
+                this._title.value = event.target.textContent;
+                this.dispatchEvent(new CustomEvent("selected", {
+                    bubbles: true,
+                    composed: true,
+                    detail: {
+                        name: event.target.textContent,
+                        value: event.target.dataset["value"]
+                    }
+                }));
+            }
+        });
+        this._title.value = this.querySelector("setting-option[is-selected]")?.textContent;
+    }
+});
+
+
+customElements.define("setting-option", class extends SettingElementBase {
+    static observedAttributes = ["data-value", "is-selected", "is-disabled"];
+    constructor() {
+        super("setting-option");
+    }
+});
+
+
+customElements.define("setting-switch", class extends SettingElementBase {
+    static observedAttributes = ["is-active", "is-disabled"];
+    constructor() {
+        super("setting-switch");
+    }
+});
+
+
+customElements.define("setting-button", class extends SettingElementBase {
+    static observedAttributes = ["data-type", "is-disabled"];
+    constructor() {
+        super("setting-button");
+    }
+});
+
+
+customElements.define("setting-text", class extends SettingElementBase {
+    static observedAttributes = ["data-type"];
+    constructor() {
+        super("setting-text");
+    }
+});
+
+
+customElements.define("setting-link", class extends SettingElementBase {
+    static observedAttributes = ["data-value"];
+    constructor() {
+        super("setting-link");
+        this.addEventListener("click", () => {
+            if (this.dataset["value"]) {
+                LiteLoader.api.openExternal(this.dataset["value"]);
+            }
+        });
+    }
+});
+
+
+customElements.define("setting-divider", class extends SettingElementBase {
+    static observedAttributes = ["data-direction"];
+    constructor() {
+        super("setting-divider");
+    }
+});
+
+
+customElements.define("setting-modal", class extends SettingElementBase {
+    static observedAttributes = ["data-title", "is-active"];
+    constructor() {
+        super("setting-modal");
+        this._title = this.shadowRoot.querySelector(".title");
+        this._close = this.shadowRoot.querySelector(".close");
+        this._modal = this.shadowRoot.querySelector(".modal");
+        this._close.addEventListener("click", () => this.toggleAttribute("is-active"));
+        this._modal.addEventListener("click", () => this.toggleAttribute("is-active"));
+        this.update();
+    }
+    update() {
+        this._title.textContent = this.dataset["title"];
+    }
+});
+```
+
+### 渲染加载器 Loader Core RendererLoader  renderer.js
+**Loader Core** 的 **RendererLoader** 为插件的 **`renderer.js`** 文件提供了监听页面渲染的接口，如插件的 **`onSettingWindowCreated`**、**`onVueComponentMount`**、**`onVueComponentUnmount`** 事件。
+```js
+// 拓扑排序函数
+// 第一个参数为依赖项列表
+// 会按照依赖关系进行排序
+function topologicalSort(dependencies) {
+    // 创建排序后的插件列表
+    const sorted = [];
+    // 创建已访问的插件列表
+    const visited = new Set();
+    const visit = (slug) => {
+        // 如果插件已经访问过，则跳过
+        if (visited.has(slug)) return;
+        // 将插件添加到已访问的插件列表
+        visited.add(slug);
+        // 获取插件信息
+        const plugin = LiteLoader.plugins[slug];
+        // 遍历插件的依赖项添加到已访问的插件列表
+        plugin.manifest.dependencies?.forEach(depSlug => visit(depSlug));
+        // 将插件添加到排序后的插件列表
+        sorted.push(slug);
+    }
+    dependencies.forEach(slug => visit(slug));
+    return sorted;
+}
+
+// 定义全局 RendererLoader 类
+export class RendererLoader {
+
+    #exports = {};
+
+    async init() {
+        // 确保 Preload 加载完毕
+        if (!window.LiteLoaderPreloadErrors) {
+            // 等待 Preload 加载完毕
+            await new Promise(resolve => {
+                const check = () => (window.LiteLoaderPreloadErrors ? resolve() : setTimeout(check));
+                check();
+            });
+        }
+        // 加载插件
+        for (const slug of topologicalSort(Object.keys(LiteLoader.plugins))) {
+            const plugin = LiteLoader.plugins[slug];
+            if (plugin.disabled || plugin.incompatible) {
+                continue;
+            }
+            const error = plugin.error || LiteLoaderPreloadErrors[slug];
+            if (error) {
+                this.#exports[slug] = { error };
+                continue
+            }
+            if (plugin.path.injects.renderer) {
+                try {
+                    // 加载插件的 renderer.js 文件
+                    this.#exports[slug] = await import(`local:///${plugin.path.injects.renderer}`);
+                }
+                catch (e) {
+                    // 捕获错误
+                    this.#exports[slug] = { error: { message: `[Renderer] ${e.message}`, stack: e.stack } };
+                }
+            }
+        }
+        return this;
+    }
+
+    // 监听插件设置窗口创建
+    onSettingWindowCreated(settingInterface) {
+        // 遍历插件 slug 列表
+        for (const slug in this.#exports) {
+            // 获取插件信息
+            const plugin = this.#exports[slug];
+            try {
+                // 如果插件有错误，则抛出错误
+                if (plugin.error) throw plugin.error;
+                // 调用插件的 onSettingWindowCreated 方法
+                plugin.onSettingWindowCreated?.(settingInterface.add(LiteLoader.plugins[slug]));
+            }
+            catch (e) {
+                // 调用 SettingInterface 的 createErrorView 方法创建错误视图
+                const view = settingInterface.add(LiteLoader.plugins[slug]);
+                settingInterface.createErrorView(e, slug, view);
+            }
+        }
+    }
+
+    // 监听 Vue 组件挂载
+    onVueComponentMount(component) {
+        // 遍历插件 slug 列表
+        for (const slug in this.#exports) {
+            // 获取插件信息
+            const plugin = this.#exports[slug];
+            // 如果插件有错误，则跳过
+            plugin.onVueComponentMount?.(component);
+        }
+    }
+
+    // 监听 Vue 组件卸载
+    onVueComponentUnmount(component) {
+        // 遍历插件 slug 列表
+        for (const slug in this.#exports) {
+            // 获取插件信息
+            const plugin = this.#exports[slug];
+            // 如果插件有错误，则跳过
+            plugin.onVueComponentUnmount?.(component);
+        }
+    }
+
+}
 ```
 
 ## 使用插件进行快速开发
