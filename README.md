@@ -1,5 +1,5 @@
 # LiteLoaderQQNT-QuickStart
-此[文档](https://github.com/854675824/LiteLoaderQQNT-QuickStart/blob/main/README.md) 适用于 LiteLoaderQQNT 插件开发的初学者，只需要了解基本的 JavaScript 语法就可以快速上手 LiteLoaderQQNT 插件开发。
+此[文档](https://github.com/854675824/LiteLoaderQQNT-QuickStart/blob/main/README.md)适用于 **LiteLoaderQQNT** 插件开发的初学者，只需要了解基本的 **JavaScript** 语法就可以快速上手 **LiteLoaderQQNT** 插件开发。
 
 ## 什么是 LiteLoaderQQNT?
 [**LiteLoaderQQNT**](https://github.com/LiteLoaderQQNT/LiteLoaderQQNT) 是 **NTQQ** 的插件加载器，一般在 **QQNT** 的环境内简称为 **LiteLoader**。**LiteLoaderQQNT** 可以为 **NTQQ** 添加各种功能。
@@ -134,13 +134,134 @@ require(String.raw`C:\Users\Cheese\Documents\LiteLoaderQQNT`)
 | repository.release.file | release 内的文件名，不填会直接下载 tag 的源码 |
 
 ### 删除 JSON 中的所有注释（补充）
-在 VS Code 中按下 *Ctrl+H*，在 **查找** 输入框中输入 `.*\/\/.+\n? ` 并勾选 **正则表达式**，**替换** 输入框为空。
+在 VS Code 中按下 *Ctrl+H*，在 **查找** 输入框中输入 `.*\/\/.+\n? ` 并勾选 **正则表达式**，**替换** 输入框为空。按下 `Ctrl+Alt+Enter` 即可。
 
 ## LiteLoaderQQNT 插件接口
 **LiteLoader** 插件加载顺序如下:
 1. **`main.js`** 主进程
 2. **`preload.js`** 预加载脚本
 3. **`renderer.js`** 渲染进程
+
+### LiteLoader API 接口
+```js
+// 获取 LiteLoader 的根目录
+const root_path=LiteLoader.path.root;
+// 获取 LiteLoader 的配置文件路径
+const profile_path=LiteLoader.path.profile;
+// 获取 LiteLoader 的数据文件夹路径
+const data_path=LiteLoader.path.data;
+// 获取 LiteLoader 的插件文件夹路径
+const plugins_path = LiteLoader.path.plugins;
+
+// 获取 QQ NT 的版本信息
+const qqnt_version = LiteLoader.versions.qqnt;
+// 获取 LiteLoader 的版本信息
+const liteloader_version = LiteLoader.versions.liteloader;
+// 获取 Node.js 的版本信息
+const node_version = LiteLoader.versions.node;
+// 获取 Chromium 的版本信息
+const chrome_version = LiteLoader.versions.chrome;
+// 获取 Electron 的版本信息
+const electron_version = LiteLoader.versions.electron;
+
+// 获取操作系统平台
+const platform = LiteLoader.os.platform;
+
+// 获取 LiteLoader 的包信息
+const liteloader_package = LiteLoader.package.liteloader;
+// 获取 QQ NT 的包信息
+const qqnt_package = LiteLoader.package.qqnt;
+
+// 获取插件列表
+const plugins = LiteLoader.plugins;
+
+// 设置配置 LiteLoader.api.config.set (setConfig)
+// 参数1: 插件 slug 字符串; 参数2: JSON 对象
+const result_set = LiteLoader.api.config.set(slug, new_config);
+// 获取配置 LiteLoader.api.config.get (getConfig)
+// 参数1: 插件 slug 字符串; 参数2: 默认返回配置字符串
+const result_get = LiteLoader.api.config.get(slug, default_config);
+// 在下次启动时安装插件
+// 参数1: 压缩包 / manifest.json 文件路径; 参数2: 是否撤销安装(为 true 时则撤销安装)
+LiteLoader.api.plugin.install(plugin_path, undone = false);
+// 在下次启动时删除插件
+// 参数1: 插件 slug; 参数2: 是否删除插件的数据文件夹; 参数3: 是否撤销删除(为 true 时则撤销删除)
+LiteLoader.api.plugin.delete(slug, delete_data = false, undone = false);
+// 禁用/启用插件
+// 参数1: 插件 slug; 参数2: 是否撤销禁用(为 true 时则为启用)
+LiteLoader.api.plugin.disable(slug, undone = false);
+// 打开外部链接
+// shell.openExternal(url: string, options?: OpenExternalOptions): Promise<void>;
+// 参数1: url; 参数2: options:
+// {
+//     activate = true, // macOS - 是否将打开的应用程序置于前台
+//     workingDirectory  = "C:\\TestDirectory", // Windows - 设置工作目录
+//     logUsage = false, // Windows - 是否记录使用情况
+// }
+LiteLoader.api.openExternal(url, options);
+// 打开文件路径
+// shell.openPath(path: string): Promise<string>;
+// 参数1: path (以桌面的默认方式打开给定的文件。)
+LiteLoader.api.openPath(path);
+
+// LiteLoader API 定义
+const LiteLoader = {
+    path: {
+        // LiteLoader 的根目录
+        root: root_path,
+        // LiteLoader 的配置文件路径
+        profile: profile_path,
+        // LiteLoader 的数据文件夹路径
+        data: data_path,
+        // LiteLoader 的插件文件夹路径
+        plugins: plugins_path
+    },
+    versions: {
+        // QQNT 的版本信息
+        qqnt: qqnt_version.curVersion ?? qqnt_version.version,
+        // LiteLoader 的版本信息
+        liteloader: liteloader_package.version,
+        // Node.js 的版本信息
+        node: process.versions.node,
+        // Chromium 的版本信息
+        chrome: process.versions.chrome,
+        // Electron 的版本信息
+        electron: process.versions.electron
+    },
+    os: {
+        // 操作系统平台
+        platform: process.platform
+    },
+    package: {
+        // LiteLoader 的包信息
+        liteloader: liteloader_package,
+        // QQNT 的包信息
+        qqnt: qqnt_package
+    },
+    // 插件列表
+    plugins: {},
+    api: {
+        config: {
+            // 设置配置
+            set: setConfig,
+            // 获取配置
+            get: getConfig
+        },
+        plugin: {
+            // 安装插件
+            install: pluginInstall,
+            // 删除插件
+            delete: pluginDelete,
+            // 启用/禁用插件
+            disable: pluginDisable
+        },
+        // 打开外部链接
+        openExternal: shell.openExternal,
+        // 打开文件路径
+        openPath: shell.openPath
+    }
+};
+```
 
 ### 主进程接口 main.js
 | 接口名称 | 接口参数 | 接口说明 |
@@ -196,13 +317,9 @@ module.exports.onBrowserWindowCreated = window => {
 #### 设置面板示例
 content.html
 ```html
-<meta charset="UTF-8">
-<!-- 最外层的内容控件 -->
 <!-- 推荐使用 LiteLoader 官方的 Web Components 组件 -->
 <!-- https://liteloaderqqnt.github.io/docs/web-components.html -->
-<div class="content-view content_view">
-    <p>Hello, World!</p>
-</div>
+<p>Hello, World!</p>
 ```
 main.js
 ```js
@@ -210,6 +327,8 @@ main.js
 const {ipcMain} = require("electron");
 // 导入文件模块
 const fs = require("fs");
+// 导入路径模块
+const path = require("path");
 // 读取设置界面内容
 ipcMain.handle("LiteLoader.example11.getSettingContent", () => fs.readFileSync(path.join(
     LiteLoader.plugins.example11.path.plugin, 'content.html'), 'utf-8'))
@@ -229,14 +348,8 @@ renderer.js
 // 监听设置窗口创建事件
 export const onSettingWindowCreated = async view => {
     try {
-        // 创建 DOM 解析器
-        const parser = new DOMParser()
-        // 解析 HTML 界面
-        const content = parser.parseFromString(await window.example11.getSettingContent(), "text/html").querySelector(".content-view")
-        // 添加到设置界面
-        view.appendChild(content);
+        view.innerHTML = await window.example11.getSettingContent();
     } catch (e) {
-        // 弹出错误信息
         alert(e)
     }
 }
@@ -1596,31 +1709,47 @@ export class SettingInterface {
 
     // 初始化设置面板
     SettingInit() {
-        // 添加样式
+        // 获取 CSS 样式
         const style = document.createElement("link");
         style.rel = "stylesheet";
         style.type = "text/css";
         style.href = "local://root/src/settings/static/style.css";
+        // 使样式生效
         document.head.append(style);
+        // 创建设置面板
         const view = this.add({
             manifest: {
+                // 标识
                 slug: "config_view",
+                // 名称
                 name: "LiteLoaderQQNT",
+                // 图标
                 thumb: "./src/settings/static/default.svg"
             },
             path: {
+                // 目录
                 plugin: LiteLoader.path.root
             }
         });
+        // 获取 view.html 内容并显示在刚刚添加的 view 中
         fetch("local://root/src/settings/static/view.html").then(async res => {
+            // 设置 view 视图的内容
             view.innerHTML = await res.text();
+            // 初始化版本信息
             initVersions(view);
+            // 初始化插件列表
             initPluginList(view);
+            // 初始化路径
             initPath(view);
+            // 初始化关于
             initAbout(view);
         });
     }
 
+    // 创建错误视图
+    // 第一个参数: 错误信息
+    // 第二个参数: 插件 slug
+    // 第三个参数: 错误视图
     createErrorView(error, slug, view) {
         const navItem = document.querySelector(`.nav-item[data-slug="${slug}"]`);
         navItem.classList.add("error");
@@ -1641,11 +1770,14 @@ export class SettingInterface {
     }
 }
 
-
+// 自适应图标
 async function appropriateIcon(pluginIconUrlUsingLocalPotocol) {
+    // 判断插件图标是否以 SVG 结尾
     if (pluginIconUrlUsingLocalPotocol.endsWith('.svg')) {
+        // 返回加载的 SVG
         return await (await fetch(pluginIconUrlUsingLocalPotocol)).text();
     } else {
+        // 返回图片标签
         return `<img src="${pluginIconUrlUsingLocalPotocol}"/>`;
     }
 }
