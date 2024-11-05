@@ -355,6 +355,218 @@ export const onSettingWindowCreated = async view => {
 }
 ```
 
+#### Web Components 示例
+```html
+<template id="plugin-item">
+    <setting-item>
+        <div class="info-area">
+            <div>
+                <slot class="icon"></slot>
+                <div>
+                    <setting-text>
+                        <slot class="name"></slot>
+                    </setting-text>
+                    <setting-text data-type="secondary">
+                        <slot class="description"></slot>
+                    </setting-text>
+                </div>
+            </div>
+            <setting-text data-type="secondary">
+                <span>版本：<slot class="version"></slot></span>
+                <span>作者：<slot class="authors"></slot></span>
+                <span>仓库：<slot class="repo"></slot></span>
+            </setting-text>
+        </div>
+        <setting-button data-type="secondary" class="manager">管理</setting-button>
+        <setting-modal class="manager-modal">
+            <setting-section data-title="开关">
+                <setting-panel>
+                    <setting-list data-direction="column">
+                        <setting-item>
+                            <setting-text>启动时加载此插件</setting-text>
+                            <setting-switch class="enable"></setting-switch>
+                        </setting-item>
+                    </setting-list>
+                </setting-panel>
+            </setting-section>
+            <setting-section data-title="删除">
+                <setting-panel>
+                    <setting-list data-direction="column">
+                        <setting-item>
+                            <setting-text>删除我的插件数据</setting-text>
+                            <setting-switch class="keepdata"></setting-switch>
+                        </setting-item>
+                        <setting-item>
+                            <setting-text>在下次启动时删除</setting-text>
+                            <setting-switch class="uninstall"></setting-switch>
+                        </setting-item>
+                    </setting-list>
+                </setting-panel>
+            </setting-section>
+        </setting-modal>
+    </setting-item>
+</template>
+
+
+<setting-section data-title="版本" class="versions">
+    <setting-panel>
+        <setting-list data-direction="row" class="current">
+            <setting-item class="liteloader">
+                <setting-text>LiteLoader</setting-text>
+                <setting-text data-type="secondary"></setting-text>
+            </setting-item>
+            <setting-item class="qqnt">
+                <setting-text>QQNT</setting-text>
+                <setting-text data-type="secondary"></setting-text>
+            </setting-item>
+            <setting-item class="electron">
+                <setting-text>Electron</setting-text>
+                <setting-text data-type="secondary"></setting-text>
+            </setting-item>
+            <setting-item class="chromium">
+                <setting-text>Chromium</setting-text>
+                <setting-text data-type="secondary"></setting-text>
+            </setting-item>
+            <setting-item class="nodejs">
+                <setting-text>Node.js</setting-text>
+                <setting-text data-type="secondary"></setting-text>
+            </setting-item>
+        </setting-list>
+    </setting-panel>
+    <setting-panel>
+        <setting-list data-direction="column" class="new">
+            <setting-item>
+                <setting-text>正在发现 LiteLoaderQQNT 是否有新版本</setting-text>
+                <setting-button data-type="secondary">你先别急</setting-button>
+            </setting-item>
+        </setting-list>
+    </setting-panel>
+</setting-section>
+
+
+<setting-section data-title="插件" class="plugins">
+    <setting-panel>
+        <setting-list data-direction="column" class="plugin">
+            <setting-item class="install">
+                <div>
+                    <setting-text>安装新插件</setting-text>
+                    <setting-text data-type="secondary">支持类型：解压前 zip 格式文件 | 解压后 manifest.json 文件</setting-text>
+                </div>
+                <setting-button data-type="secondary">选择文件</setting-button>
+            </setting-item>
+            <setting-item class="loader">
+                <setting-text>插件加载器</setting-text>
+                <setting-switch></setting-switch>
+            </setting-item>
+        </setting-list>
+    </setting-panel>
+    <setting-panel>
+        <setting-list data-title="扩展" is-collapsible data-direction="column" class="extension">
+        </setting-list>
+    </setting-panel>
+    <setting-panel>
+        <setting-list data-title="主题" is-collapsible data-direction="column" class="theme">
+        </setting-list>
+    </setting-panel>
+    <setting-panel>
+        <setting-list data-title="依赖" is-collapsible data-direction="column" class="framework">
+        </setting-list>
+    </setting-panel>
+</setting-section>
+
+
+<setting-section data-title="目录" class="path">
+    <setting-panel>
+        <setting-list data-direction="column">
+            <setting-item class="root">
+                <div>
+                    <setting-text>本体目录位置</setting-text>
+                    <setting-text data-type="secondary">LiteLoaderQQNT 本体的安装位置，可以安装到任意位置</setting-text>
+                    <setting-text data-type="secondary"></setting-text>
+                </div>
+                <setting-button data-type="secondary">进入目录</setting-button>
+            </setting-item>
+            <setting-item class="profile">
+                <div>
+                    <setting-text>数据目录位置</setting-text>
+                    <setting-text data-type="secondary">可通过 LITELOADERQQNT_PROFILE 环境变量指定数据存放位置</setting-text>
+                    <setting-text data-type="secondary"></setting-text>
+                </div>
+                <setting-button data-type="secondary">进入目录</setting-button>
+            </setting-item>
+        </setting-list>
+    </setting-panel>
+</setting-section>
+
+
+<setting-section data-title="关于" class="about">
+    <setting-panel>
+        <setting-list data-direction="column">
+            <setting-item>
+                <div>
+                    <setting-text>LiteLoaderQQNT</setting-text>
+                    <setting-text data-type="secondary">LiteLoaderQQNT 是 QQNT 的插件加载器，一般在 QQNT 的环境内简称为LiteLoader</setting-text>
+                    <setting-text data-type="secondary">它可以让你自由地为 QQNT 添加各种插件，并实现例如美化主题、增加功能等各种功能</setting-text>
+                </div>
+            </setting-item>
+            <setting-item>
+                <div>
+                    <setting-text>开源协议</setting-text>
+                    <setting-text data-type="secondary">MIT License</setting-text>
+                </div>
+            </setting-item>
+        </setting-list>
+    </setting-panel>
+    <setting-panel>
+        <setting-list data-direction="column">
+            <setting-item>
+                <div>
+                    <setting-text>LiteLoaderQQNT 官网</setting-text>
+                    <setting-text data-type="secondary">https://liteloaderqqnt.github.io</setting-text>
+                </div>
+                <setting-button data-type="secondary" class="liteloaderqqnt">进去瞅瞅</setting-button>
+            </setting-item>
+            <setting-item>
+                <div>
+                    <setting-text>GitHub 仓库</setting-text>
+                    <setting-text data-type="secondary">https://github.com/LiteLoaderQQNT</setting-text>
+                </div>
+                <setting-button data-type="secondary" class="github">进去瞅瞅</setting-button>
+            </setting-item>
+            <setting-item>
+                <div>
+                    <setting-text>Telegram 群组</setting-text>
+                    <setting-text data-type="secondary">https://t.me/LiteLoaderQQNT</setting-text>
+                </div>
+                <setting-button data-type="secondary" class="group">进去瞅瞅</setting-button>
+            </setting-item>
+            <setting-item>
+                <div>
+                    <setting-text>Telegram 频道</setting-text>
+                    <setting-text data-type="secondary">https://t.me/LiteLoaderQQNT_Channel</setting-text>
+                </div>
+                <setting-button data-type="secondary" class="channel">进去瞅瞅</setting-button>
+            </setting-item>
+        </setting-list>
+    </setting-panel>
+    <setting-panel>
+        <setting-list data-direction="column">
+            <setting-item>
+                <setting-text class="hitokoto_text">正在加载：Hitokoto - 一言</s>
+                    <div></div>
+            </setting-item>
+            <setting-item>
+                <div></div>
+                <div>
+                    <span>——</span>
+                    <span class="hitokoto_author">LiteLoaderQQNT</span>
+                </div>
+            </setting-item>
+        </setting-list>
+    </setting-panel>
+</setting-section>
+```
+
 
 
 ## LiteLoaderQQNT 加载流程
@@ -1782,136 +1994,210 @@ async function appropriateIcon(pluginIconUrlUsingLocalPotocol) {
     }
 }
 
-
+// 初始化版本信息控件
 async function initVersions(view) {
+    // LiteLoader 版本
     const liteloader = view.querySelectorAll(".versions .current .liteloader setting-text");
+    // QQNT 版本
     const qqnt = view.querySelectorAll(".versions .current .qqnt setting-text");
+    // Electron 版本
     const electron = view.querySelectorAll(".versions .current .electron setting-text");
+    // Chromium 版本
     const chromium = view.querySelectorAll(".versions .current .chromium setting-text");
+    // Node.js 版本
     const nodejs = view.querySelectorAll(".versions .current .nodejs setting-text");
 
+    // 显示 LiteLoader 版本信息
     liteloader[1].textContent = LiteLoader.versions.liteloader;
+    // 显示 QQNT 版本信息
     qqnt[1].textContent = LiteLoader.versions.qqnt;
+    // 显示 Electron 版本信息
     electron[1].textContent = LiteLoader.versions.electron;
+    // 显示 Chromium 版本信息
     chromium[1].textContent = LiteLoader.versions.chrome;
+    // 显示 Node.js 版本信息
     nodejs[1].textContent = LiteLoader.versions.node;
 
+    // LiteLoader 标题
     const title = view.querySelector(".versions .new setting-text");
+    // LiteLoader 更新按钮
     const update_btn = view.querySelector(".versions .new setting-button");
-
+    // 跳转链接函数
     const jump_link = () => LiteLoader.api.openExternal(update_btn.value);
     const try_again = () => {
-        // 初始化 显示
+        // 设置标题内容
         title.textContent = "正在瞅一眼 LiteLoaderQQNT 是否有新版本";
+        // 设置更新按钮显示内容
         update_btn.textContent = "你先别急";
         update_btn.value = null;
+        // 移除点击事件
         update_btn.removeEventListener("click", jump_link);
         update_btn.removeEventListener("click", try_again);
         // 检测是否有新版
         const repo_url = LiteLoader.package.liteloader.repository.url;
+        // 拼接仓库地址
         const release_latest_url = `${repo_url.slice(0, repo_url.lastIndexOf(".git"))}/releases/latest`;
+        // 获取最新版本号
         fetch(release_latest_url).then((res) => {
             const new_version = res.url.slice(res.url.lastIndexOf("/") + 1);
-            // 有新版
+            // 判断当前版本是否与最新版本不相等
             if (LiteLoader.versions.liteloader != new_version) {
+                // 设置标题内容
                 title.textContent = `发现 LiteLoaderQQNT 新版本 ${new_version}`;
+                // 设置更新按钮显示内容
                 update_btn.textContent = "去瞅一眼";
                 update_btn.value = res.url;
+                // 移除点击事件
                 update_btn.removeEventListener("click", try_again);
                 update_btn.addEventListener("click", jump_link);
             }
-            // 没新版
+            // 若版本相等则不需要更新
             else {
+                // 设置标题内容
                 title.textContent = "暂未发现 LiteLoaderQQNT 有新版本，目前已是最新";
+                // 设置更新按钮显示内容
                 update_btn.textContent = "重新发现";
                 update_btn.value = null;
+                // 移除点击事件
                 update_btn.removeEventListener("click", jump_link);
                 update_btn.addEventListener("click", try_again);
             }
         }).catch((e) => {
+            // 设置标题内容
             title.textContent = `检查更新时遇到错误：${e}`;
+            // 设置更新按钮显示内容
             update_btn.textContent = "重新发现";
             update_btn.value = null;
+            // 移除点击事件
             update_btn.removeEventListener("click", jump_link);
             update_btn.addEventListener("click", try_again);
         });
     };
-
+    // 检查版本更新
     try_again();
 }
 
-
+// 初始化插件列表控件
 async function initPluginList(view) {
+    // 获取插件控件模板
     const plugin_item_template = view.querySelector("#plugin-item");
+    // 获取插件安装按钮控件
     const plugin_install_button = view.querySelector(".plugins .plugin .install setting-button");
+    // 获取插件加载开关控件
     const plugin_loader_switch = view.querySelector(".plugins .plugin .loader setting-switch");
+    // 获取插件类型列表控件
     const plugin_lists = {
+        // 插件类型
         extension: view.querySelector(".plugins .extension"),
+        // 主题类型
         theme: view.querySelector(".plugins .theme"),
+        // 框架类型
         framework: view.querySelector(".plugins .framework"),
     };
 
+    // 获取 “选择文件” 按钮
     const input_file = document.createElement("input");
+    // 限制文件选择
     input_file.type = "file";
+    // 限制文件类型
     input_file.accept = ".zip,.json";
+    // 监听文件选择
     input_file.addEventListener("change", async () => {
+        // 获取文件路径
         const filepath = input_file.files?.[0]?.path;
+        // 获取 LiteLoader 配置
         const config = await LiteLoader.api.config.get("LiteLoader", default_config);
+        // 判断是否已安装
         const has_install = Object.values(config.installing_plugins).some(item => item.plugin_path == filepath);
         const is_install = await LiteLoader.api.plugin.install(filepath, has_install);
         alert(is_install ? (has_install ? "已取消安装此插件" : "将在下次启动时安装") : "无法安装无效插件");
         input_file.value = null;
     });
+    // 监听点击事件
     plugin_install_button.addEventListener("click", () => input_file.click());
 
+    // 监听插件加载开关
     const config = await LiteLoader.api.config.get("LiteLoader", default_config);
     plugin_loader_switch.toggleAttribute("is-active", config.enable_plugins);
     plugin_loader_switch.addEventListener("click", () => {
+        // 获取当前状态
         const isActive = plugin_loader_switch.hasAttribute("is-active");
+        // 切换状态
         plugin_loader_switch.toggleAttribute("is-active", !isActive);
+        // 更新配置
         config.enable_plugins = !isActive;
+        // 保存配置
         LiteLoader.api.config.set("LiteLoader", config);
     });
 
+    // 获取各种类型插件数量
     const plugin_counts = {
+        // 插件类型
         extension: 0,
+        // 主题类型
         theme: 0,
+        // 框架类型
         framework: 0
     }
 
+    // 遍历插件
     for (const [slug, plugin] of Object.entries(LiteLoader.plugins)) {
         // 跳过不兼容插件
         if (plugin.incompatible) {
             continue;
         }
 
+        // 获取默认图标
         const default_icon = `local://root/src/settings/static/default.png`;
+        // 获取插件图标
         const plugin_icon = `local:///${plugin.path.plugin}/${plugin.manifest?.icon}`;
+        // 获取显示图标
         const icon = plugin.manifest?.icon ? plugin_icon : default_icon;
 
+        // 获取插件列表
         const plugin_list = plugin_lists[plugin.manifest.type] || plugin_lists.extension;
+        // 复制插件模板
         const plugin_item = plugin_item_template.content.cloneNode(true);
 
+        // 获取项目图标
         const plugin_item_icon = plugin_item.querySelector(".icon");
+        // 获取项目名称
         const plugin_item_name = plugin_item.querySelector(".name");
+        // 获取项目描述
         const plugin_item_description = plugin_item.querySelector(".description");
+        // 获取项目版本
         const plugin_item_version = plugin_item.querySelector(".version");
+        // 获取项目作者
         const plugin_item_authors = plugin_item.querySelector(".authors");
+        // 获取项目仓库
         const plugin_item_repo = plugin_item.querySelector(".repo");
+        // 获取插件管理按钮
         const plugin_item_manager = plugin_item.querySelector(".manager");
+        // 获取插件管理弹窗
         const plugin_item_manager_modal = plugin_item.querySelector(".manager-modal");
+        // 获取启用按钮
         const manager_modal_enable = plugin_item_manager_modal.querySelector(".enable");
+        // 获取保留数据
         const manager_modal_keepdata = plugin_item_manager_modal.querySelector(".keepdata");
+        // 获取卸载按钮
         const manager_modal_uninstall = plugin_item_manager_modal.querySelector(".uninstall");
 
+        // 设置插件图标
         plugin_item_icon.innerHTML = await appropriateIcon(icon);
+        // 设置插件名称
         plugin_item_name.textContent = plugin.manifest.name;
+        // 设置插件标题
         plugin_item_name.title = plugin.manifest.name;
+        // 设置插件描述
         plugin_item_description.textContent = plugin.manifest.description;
+        // 设置插件标题
         plugin_item_description.title = plugin.manifest.description;
 
+        // 获取版本链接控件
         const version_link = document.createElement("setting-link");
+        // 设置插件版本
         version_link.textContent = plugin.manifest.version;
+        // 添加版本链接
         plugin_item_version.append(version_link);
 
         plugin.manifest.authors?.forEach((author, index, array) => {
